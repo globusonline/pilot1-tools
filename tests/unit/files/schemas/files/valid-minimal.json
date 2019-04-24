@@ -6,6 +6,7 @@
       "length": 1024,
       "md5": "md5hashthing",
       "data_type": "Metadata",
+      "dataframe_type": "List",
       "mime_type": "text/tab-separated-values"
     }
   ]

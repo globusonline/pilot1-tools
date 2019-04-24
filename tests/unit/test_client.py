@@ -77,3 +77,10 @@ def test_get_subject_url():
            pc.get_subject_url(*args)
     assert pc.get_globus_url(*test_args) == \
            pc.get_subject_url(*test_args)
+
+
+def test_upload_gcp(mock_transfer_client, simple_tsv, mock_config):
+    pc = PilotClient()
+    result = pc.upload_gcp(simple_tsv, 'bar', test=True)
+    assert result.data['code'] == 'Accepted'
+

@@ -86,7 +86,8 @@
     "length": 1456184548,
     "md5": "dc9795de1fdffd41f35a2fa02ef1b675",
     "mime_type": "text/tab-separated-values",
-    "data_type": "Drug Response",
+    "data_type": "Metadata",
+    "dataframe_type": "List",
     "sha256": "b7d9b5daa40b1f0c61c135ec427960ac43b6075092e4f245124e16d6bbdd51c3",
     "url": "globus://ebf55996-33bf-11e9-9fa4-0a06afd4a22e:/restricted/dataframes/dose_response/rescaled_combined_single_drug_growth"
   }]

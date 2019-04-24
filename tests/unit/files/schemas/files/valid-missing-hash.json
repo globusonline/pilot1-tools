@@ -4,7 +4,8 @@
       "filename": "foo.txt",
       "url": "http://foo.org",
       "length": 1024,
-      "data_type": "Missing a hash is currently technically valid. We should fix this",
+      "data_type": "Metadata",
+      "dataframe_type": "List",
       "mime_type": "text/tab-separated-values"
     }
   ]

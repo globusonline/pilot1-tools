@@ -1,6 +1,3 @@
 {
-  "ncipilot": {
-    "data_type": "Microarray",
-    "dataframe_type": "Matrix"
-  }
+  "ncipilot": {}
 }

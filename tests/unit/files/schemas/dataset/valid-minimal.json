@@ -22,7 +22,8 @@
       "url": "http://foo.org",
       "length": 1024,
       "md5": "md5hashthing",
-      "data_type": "tsv",
+      "data_type": "Metadata",
+      "dataframe_type": "Matrix",
       "mime_type": "text/tab-separated-values"
     }
   ],
