@@ -31,7 +31,7 @@ GMETA_LIST = {
 GMETA_ENTRY = {
     "@version": "2016-11-09",
     "visible_to": [],
-    "content": '',
+    "content": [],
     "subject": ''
 }
 
@@ -133,18 +133,22 @@ def update_metadata(new_metadata, prev_metadata, user_metadata, files_updated):
     return metadata
 
 
-def gen_gmeta(subject, visible_to, content):
+def gen_gmeta(subject, visible_to, content, validate=True):
     try:
-        validate_dataset(content)
+        if validate:
+            validate_dataset(content)
     except jsonschema.exceptions.ValidationError as ve:
         if any([m in ve.message for m in MINIMUM_USER_REQUIRED_FIELDS]):
             raise RequiredUploadFields(MINIMUM_USER_REQUIRED_FIELDS) from None
-    entry = GMETA_ENTRY.copy()
-    entry['visible_to'] = [GROUP_URN_PREFIX.format(visible_to)]
+    entry = copy.deepcopy(GMETA_ENTRY)
+    if visible_to:
+        entry['visible_to'] = [GROUP_URN_PREFIX.format(visible_to)]
+    else:
+        entry['visible_to'] = ['public']
     entry['subject'] = subject
-    entry['content'] = content
+    entry['content'] = copy.deepcopy(content)
     entry['id'] = 'metadata'
-    gmeta = GMETA_LIST.copy()
+    gmeta = copy.deepcopy(GMETA_LIST)
     gmeta['ingest_data']['gmeta'].append(entry)
     return gmeta
 
