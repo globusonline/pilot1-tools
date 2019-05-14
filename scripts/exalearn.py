@@ -89,6 +89,7 @@ def parse_file(filename, num_rows):
         identifier = 'par{}-{}-{:.1f}'.format(data['cosmo']['par'],
                                               data['cosmo']['universe_id'],
                                               float(data['cosmo']['redshift']))
+        data['cosmo']['redshift_str'] = str(data['cosmo']['redshift'])
         data['dc']['creators'] = [{'creatorName': 'Mathuriya, Amrita'},
                                   {'creatorName': 'Bard, Deborah'},
                                   {'creatorName': 'Mendygral, Peter'},
