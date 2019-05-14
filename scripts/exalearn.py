@@ -4,6 +4,12 @@ import re
 import json
 import datetime
 import click
+import os
+import numpy
+import pylab
+import requests
+from urllib.parse import urlsplit, urlunsplit
+import globus_sdk
 from pilot.client import PilotClient
 from pilot.search import scrape_metadata, gen_gmeta, GMETA_LIST
 from pilot.validation import validate_json
@@ -15,6 +21,7 @@ pc.ENDPOINT = 'b8826a7a-676a-11e9-b7f5-0a37f382de32'
 pc.BASE_DIR = ''
 visible_to = []
 output_file = 'exalearn_gmetas.json'
+MASTER_MANIFEST = 'exalearn_master_manifest.json'
 
 
 headers = {'Omega_m', 'Omega_b', 'Omega_L', 'H0', 'sigma_8',
@@ -61,6 +68,28 @@ def coerce_type(content, keys, func):
     for key in keys:
         if content.get(key):
             content[key] = func(content[key])
+
+
+def gen_image(filename):
+    array_filename = filename
+    image_filename = array_filename.rstrip('npy') + 'png'
+    density = numpy.load(array_filename)
+
+    # sum along a section along the x axis
+    # add 1 to eliminate zero and take the log
+    projection_x = numpy.log(density[:128].sum(0) + 1)
+
+    figsize = (numpy.array(projection_x.shape) / 100.0)[::-1]
+    import matplotlib
+    matplotlib.use("macOSX")
+    fig = pylab.figure()
+    pylab.axes([0, 0, 1, 1])  # Make the plot occupy the whole canvas
+    pylab.axis('off')
+    fig.set_size_inches(figsize)
+    pylab.imshow(projection_x, origin='lower')
+    pylab.savefig(image_filename, facecolor='black', edgecolor='black',
+                  dpi=100)
+    return image_filename
 
 
 def parse_file(filename, num_rows):
@@ -127,6 +156,17 @@ def parse_file(filename, num_rows):
     return stripped_records, gmetas
 
 
+def remote_file_exists(gpath):
+    path = urlsplit(gpath).path
+    tauth = pc.get_authorizers()['transfer.api.globus.org']
+    tc = globus_sdk.TransferClient(authorizer=tauth)
+    resp = tc.operation_ls(pc.ENDPOINT, path=os.path.dirname(path))
+    rfnames = [r['name'] for r in resp.data['DATA']]
+    if os.path.basename(path) in rfnames:
+        return True
+    return False
+
+
 @click.group()
 def cli():
     pass
@@ -139,6 +179,64 @@ def cli():
 def dump(filename, n):
     stripped_records, _ = parse_file(filename, n)
     click.echo(json.dumps(stripped_records[:n], indent=2))
+
+
+@cli.command()
+@click.argument('filename', type=click.Path(exists=True, file_okay=True,
+                dir_okay=False, readable=True, resolve_path=True))
+@click.option('-n', default=10)
+def images(filename, n):
+    stripped_records, _ = parse_file(filename, n)
+    fnames = [r['content']['cosmo']['data_fn'] for r in stripped_records]
+    urls = [urlunsplit(
+            ('https', '{}.e.globus.org'.format(pc.ENDPOINT),
+             os.path.join('CosmoFlow', f), '', '')
+            ) for f in fnames
+            ]
+    if not os.path.exists(MASTER_MANIFEST):
+        man = {}
+    else:
+        with open(MASTER_MANIFEST) as fh:
+            click.echo(f'Loaded {MASTER_MANIFEST}')
+            man = json.load(fh)
+
+    for url in urls:
+
+        remote_image_path = url.rstrip('npy') + 'png'
+
+        data_filename = os.path.basename(url)
+        if url in man.keys():
+            click.secho(f'{url} already completed, skipping...')
+            continue
+
+        click.echo(f'Downloading {url}')
+        response = requests.get(url, headers=pc.http_headers, stream=True)
+        response.raise_for_status()
+        with open(data_filename, 'wb') as fh:
+            for chunk in response.iter_content(chunk_size=2048):
+                fh.write(chunk)
+
+        local_image_path = gen_image(data_filename)
+        man[url] = {
+            'data_png': remote_image_path,
+            'files': scrape_metadata(data_filename, url)['files']
+        }
+        with open(MASTER_MANIFEST, 'w+') as fh:
+            fh.write(json.dumps(man))
+        os.unlink(data_filename)
+
+        if remote_file_exists(remote_image_path):
+            click.echo('Skipping upload, already exists.')
+            continue
+
+        assert remote_image_path.endswith('.png')
+        with open(os.path.basename(remote_image_path), 'rb') as fh:
+            requests.put(
+                remote_image_path, headers=pc.http_headers,
+                data=fh, allow_redirects=False)
+        os.unlink(local_image_path)
+
+    click.secho('Done!', fg='green')
 
 
 @cli.command(help='Command will ask confirmation before ingesting.')
