@@ -36,4 +36,8 @@ def validate_json(name, json):
         base_uri="file://{}/{}".format(BASE_SCHEMA_DIR, name),
         referrer=name
     )
+    # setting the resolver for datacite causes problems. It seems to resolve
+    # fine when no custom resolver is used.
+    if name == 'dc':
+        resolver = None
     jsonschema.validate(schema=schema, resolver=resolver, instance=json)
