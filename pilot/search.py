@@ -65,7 +65,12 @@ def scrape_metadata(dataframe, url, skip_analysis=True):
         formal_name = '{}, {}'.format(name[-1:][0], ' '.join(name[:-1]))
     else:
         formal_name = user_info['name']
-    metadata = analyze_dataframe(dataframe) if not skip_analysis else {}
+    metadata = {}
+    if not skip_analysis:
+        try:
+            metadata = analyze_dataframe(dataframe)
+        except Exception:
+            pass
     return {
         'dc': {
             'titles': [
