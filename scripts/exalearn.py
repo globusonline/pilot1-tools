@@ -118,9 +118,10 @@ def parse_file(filename, num_rows):
         coerce_type(data['cosmo'], hfloats, float)
         coerce_type(data['cosmo'], hints, int)
 
-        identifier = 'par{}-{}-{:.1f}'.format(data['cosmo']['par'],
-                                              data['cosmo']['universe_id'],
-                                              float(data['cosmo']['redshift']))
+        par, uid, rs = (data['cosmo']['par'], data['cosmo']['universe_id'],
+                        float(data['cosmo']['redshift']))
+        identifier = f'par{par}-{uid}-{rs:.1f}'
+        title = f'Par{par} - Universe {uid} - Redshift {rs:.1f}'
         data['cosmo']['redshift_str'] = str(data['cosmo']['redshift'])
         data['dc']['creators'] = [{'creatorName': 'Mathuriya, Amrita'},
                                   {'creatorName': 'Bard, Deborah'},
@@ -141,9 +142,10 @@ def parse_file(filename, num_rows):
                                   {'creatorName': 'Lee, Victor'}]
         data['dc']['formats'] = ['application/octet-stream']
         data['dc']['subjects'] = [{'subject': 'Cosmology'}]
-        data['dc']['titles'] = [{'title': identifier, 'type': 'Other'}]
+        data['dc']['titles'] = [{'title': title, 'type': 'Other'}]
         data['dc']['dates'] = [{'date': date.isoformat() + 'Z',
                                'dateType': 'Created'}]
+        data['dc']['publisher'] = 'Lawrence Berkeley National Laboratory'
         del data['files']
         del data['ncipilot']
         del data['field_metadata']
@@ -175,7 +177,7 @@ def cli():
     pass
 
 
-@cli.command()
+@cli.command(help='Print record metadata to console instead of ingesting')
 @click.argument('filename', type=click.Path(exists=True, file_okay=True,
                 dir_okay=False, readable=True, resolve_path=True))
 @click.option('-n', default=10)
@@ -184,7 +186,8 @@ def dump(filename, n):
     click.echo(json.dumps(stripped_records[:n], indent=2))
 
 
-@cli.command()
+@cli.command(help='Download full datasets and create/upload images. Also '
+                  'generates manifests')
 @click.argument('filename', type=click.Path(exists=True, file_okay=True,
                 dir_okay=False, readable=True, resolve_path=True))
 @click.option('-n', default=10)
