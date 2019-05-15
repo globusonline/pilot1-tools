@@ -5,9 +5,11 @@ import json
 import datetime
 import click
 import os
+import sys
 import numpy
 import pylab
 import requests
+import matplotlib
 from urllib.parse import urlsplit, urlunsplit
 import globus_sdk
 from pilot.client import PilotClient
@@ -29,6 +31,9 @@ headers = {'Omega_m', 'Omega_b', 'Omega_L', 'H0', 'sigma_8',
 hfloats = {'Omega_m', 'Omega_b', 'Omega_L', 'H0', 'sigma_8',
            'nspec', 'w0', 'wa', 'redshift'}
 hints = {'universe_id'}
+
+if sys.platform == 'darwin':
+    matplotlib.use("macOSX")
 
 
 def get_date_and_par(data_fn):
@@ -80,8 +85,6 @@ def gen_image(filename):
     projection_x = numpy.log(density[:128].sum(0) + 1)
 
     figsize = (numpy.array(projection_x.shape) / 100.0)[::-1]
-    import matplotlib
-    matplotlib.use("macOSX")
     fig = pylab.figure()
     pylab.axes([0, 0, 1, 1])  # Make the plot occupy the whole canvas
     pylab.axis('off')
@@ -223,7 +226,7 @@ def images(filename, n):
         }
         with open(MASTER_MANIFEST, 'w+') as fh:
             fh.write(json.dumps(man))
-        os.unlink(data_filename)
+        #os.unlink(data_filename)
 
         if remote_file_exists(remote_image_path):
             click.echo('Skipping upload, already exists.')
