@@ -32,9 +32,6 @@ hfloats = {'Omega_m', 'Omega_b', 'Omega_L', 'H0', 'sigma_8',
            'nspec', 'w0', 'wa', 'redshift'}
 hints = {'universe_id'}
 
-if sys.platform == 'darwin':
-    matplotlib.use("macOSX")
-
 
 def get_date_and_par(data_fn):
     info_string = data_fn.split('/')[0]
@@ -76,6 +73,8 @@ def coerce_type(content, keys, func):
 
 
 def gen_image(filename):
+    if sys.platform == 'darwin':
+        matplotlib.use("macOSX")
     array_filename = filename
     image_filename = array_filename.rstrip('npy') + 'png'
     density = numpy.load(array_filename)
@@ -96,6 +95,7 @@ def gen_image(filename):
 
 
 def parse_file(filename, num_rows):
+    master_manifest = load_master_manifest()
     records = []
     for row in get_rows(filename, num_rows):
         if not set(row.keys()).issubset(headers):
@@ -150,6 +150,11 @@ def parse_file(filename, num_rows):
         del data['ncipilot']
         del data['field_metadata']
 
+        man_record = master_manifest.get(get_url(data['cosmo']['data_fn']))
+        if man_record is not None:
+            data['files'] = man_record['files']
+            data['cosmo']['data_png'] = man_record['data_png']
+
         validate_json('dc', data)
         # Make sure we aren't adding more fields
         subject = f'gsearch://{identifier}'
@@ -161,15 +166,37 @@ def parse_file(filename, num_rows):
     return stripped_records, gmetas
 
 
+def get_url(partial_filename):
+    """
+    Returns a full Globus HTTP URL given the partial filename in
+    index-parAB.csv ect.
+    """
+    return urlunsplit(
+        ('https', '{}.e.globus.org'.format(pc.ENDPOINT),
+         os.path.join('CosmoFlow', partial_filename), '', '')
+    )
+
+
+def load_master_manifest():
+    """
+    The master manifest tracks remote file manifests and image urls generated
+    with the 'images' command.
+    """
+    if not os.path.exists(MASTER_MANIFEST):
+        return {}
+    else:
+        with open(MASTER_MANIFEST) as fh:
+            click.echo(f'Loaded {MASTER_MANIFEST}')
+            return json.load(fh)
+
+
 def remote_file_exists(gpath):
     path = urlsplit(gpath).path
     tauth = pc.get_authorizers()['transfer.api.globus.org']
     tc = globus_sdk.TransferClient(authorizer=tauth)
     resp = tc.operation_ls(pc.ENDPOINT, path=os.path.dirname(path))
-    rfnames = [r['name'] for r in resp.data['DATA']]
-    if os.path.basename(path) in rfnames:
-        return True
-    return False
+    rfdata = {r['name']: r for r in resp.data['DATA']}
+    return rfdata.get(os.path.basename(path), None)
 
 
 @click.group()
@@ -194,17 +221,8 @@ def dump(filename, n):
 def images(filename, n):
     stripped_records, _ = parse_file(filename, n)
     fnames = [r['content']['cosmo']['data_fn'] for r in stripped_records]
-    urls = [urlunsplit(
-            ('https', '{}.e.globus.org'.format(pc.ENDPOINT),
-             os.path.join('CosmoFlow', f), '', '')
-            ) for f in fnames
-            ]
-    if not os.path.exists(MASTER_MANIFEST):
-        man = {}
-    else:
-        with open(MASTER_MANIFEST) as fh:
-            click.echo(f'Loaded {MASTER_MANIFEST}')
-            man = json.load(fh)
+    urls = [get_url(f) for f in fnames]
+    man = load_master_manifest()
 
     for url in urls:
 
@@ -229,7 +247,7 @@ def images(filename, n):
         }
         with open(MASTER_MANIFEST, 'w+') as fh:
             fh.write(json.dumps(man))
-        #os.unlink(data_filename)
+        os.unlink(data_filename)
 
         if remote_file_exists(remote_image_path):
             click.echo('Skipping upload, already exists.')
