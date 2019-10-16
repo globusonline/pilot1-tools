@@ -166,11 +166,14 @@ def pilot_code_handler(dataframe, destination, verbose):
         sys.exit(pce.CODE)
     except pilot.exc.AnalysisException as ae:
         click.secho('Error analyzing {}, skipping...'.format(dataframe),
-                    fg='yellow')
+                    fg='yellow', err=True)
         if verbose:
             traceback.print_exception(*ae.original_exc_info)
         else:
             click.secho('(Use --verbose to see full error)', fg='yellow')
+    except pilot.exc.PilotClientException as pcp:
+        log.exception(pcp)
+        click.secho(str(pcp), fg='red', err=True)
 
 
 @click.command(help='Download a file to your local directory.')
