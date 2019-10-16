@@ -1,4 +1,5 @@
 import os
+import json
 import time
 import globus_sdk
 import urllib
@@ -549,8 +550,16 @@ class PilotClient(NativeClient):
             log.debug(f'Search task still {task_status}')
             time.sleep(.2)
             task_status = sc.get_task(result['task_id'])['state']
-        if sc.get_task(result['task_id'])['state'] != 'SUCCESS':
-            raise exc.PilotClientException('Failed to ingest search subject')
+        task_info = sc.get_task(result['task_id'])
+        if task_info['state'] != 'SUCCESS':
+            log.debug(json.dumps(task_info.data, indent=4))
+            log.warning('It is possible the ingest error occurred due to '
+                        'types changing. For example: {"myval": 5} --> '
+                        '{"myval": "5"} is not supported. Please verify new '
+                        'metadata has not changed types.')
+            msg = ('Globus Search Error: "{}". For more info, set '
+                   '`export PILOT_LOGGING=DEBUG`'.format(task_info['message']))
+            raise exc.PilotClientException(msg)
         return True
 
     def delete_entry(self, path, entry_id='metadata', full_subject=False):

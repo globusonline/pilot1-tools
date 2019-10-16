@@ -10,6 +10,10 @@ from matplotlib.colors import LogNorm
 import pylab
 import h5py
 
+if sys.platform == 'darwin':
+    matplotlib.use("macOSX")
+
+
 def trim_axs(axs, N):
     """little helper to massage the axs list to have correct length..."""
     axs = axs.flat
@@ -17,10 +21,8 @@ def trim_axs(axs, N):
         ax.remove()
     return axs[:N]
 
-def gen_image(dset, basename, cbar=True, log=False):
-    if sys.platform == 'darwin':
-        matplotlib.use("macOSX")
 
+def gen_image(dset, basename, cbar=True, log=False):
     figsize = (numpy.array(dset.shape) / 100.0)[::-1]
     fig = plt.figure()
     fig.set_size_inches(figsize)
@@ -43,23 +45,24 @@ def gen_image(dset, basename, cbar=True, log=False):
         plt.colorbar(im, cax=cax)
     plt.savefig(image_filename, dpi=100)
 
+
 def plot_pixelSum(xpcs_h5file):
-    h5fname = os.path.basename(xpcs_h5file.filename)
     pixelSum_dset = xpcs_h5file['exchange/pixelSum']
-    basename = h5fname.rstrip('.hdf') + '_pixelSum'
+    basename = 'scattering_pattern'
     gen_image(pixelSum_dset, basename)
     gen_image(pixelSum_dset, basename, log=True)
     gen_image(pixelSum_dset, basename + '_pre', cbar=False)
     gen_image(pixelSum_dset, basename + '_pre', cbar=False, log=True)
 
+
 def plot_intensity_vs_time(xpcs_h5file):
-    basename = os.path.basename(xpcs_h5file.filename).rstrip('.hdf')
     i_vs_t = xpcs_h5file['exchange/frameSum']
     pylab.plot(i_vs_t[0], i_vs_t[1])
     plt.xlabel("Elapsed Time (s)")
     plt.ylabel("Average Intensity (photons/pixel/frame)")
-    plt.title(basename)
-    plt.savefig(basename + '_frameSum.png')
+    plt.title(xpcs_h5file.filename.rstrip('.hdf'))
+    plt.savefig('total_intensity_vs_time.png')
+
 
 def plot_intensity_t_vs_q(xpcs_h5file):
     basename = os.path.basename(xpcs_h5file.filename).rstrip('.hdf')
@@ -108,6 +111,7 @@ def plot_intensity_vs_q(xpcs_h5file):
     plt.title('{} Intensity Mean Total'.format(basename))
     plt.tight_layout()
     plt.savefig(basename + '_intensity.png', dpi=150)
+
 
 def plot_g2_all(xpcs_h5file):
     def sfig(bn, gs, ge):
@@ -263,7 +267,6 @@ def plot_fits(xpcs_h5file):
 
         
 if __name__ == '__main__':
-    import sys
     h5filename = sys.argv[1]
     print('opening ' + h5filename)
     x_h5_file = h5py.File(h5filename, 'r')
